@@ -4,7 +4,7 @@ import { SolanaSwap } from "../target/types/solana_swap";
 import { PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { createMint, createAccount, mintTo, NATIVE_MINT, TOKEN_PROGRAM_ID, createSyncNativeInstruction, createAssociatedTokenAccountInstruction, getAssociatedTokenAddressSync, getAccount } from "@solana/spl-token";
 import { TypeDef } from "@coral-xyz/anchor/dist/cjs/program/namespace/types";
-import { expect } from "chai";
+import { expect, assert } from "chai";
 const CurveType = Object.freeze({
   ConstantPrice: 1,
 });
@@ -187,13 +187,11 @@ describe("solana-swap", () => {
     }).signers([ammAccount]).rpc();
     const amm = await program.account.amm.fetch(ammAccount.publicKey);
 
-    expect(amm.tokenProgramId === TOKEN_PROGRAM_ID);
-    expect(amm.tokenProgramId === TOKEN_PROGRAM_ID);
-    expect(amm.poolMint === tokenPool);
-    expect(amm.tokenSolMint === mintA);
-    expect(amm.tokenBMint === mintB);
-    expect(amm.tokenSolAccount === tokenAccountA);
-    expect(amm.tokenBAccount === tokenAccountB);
-
+    assert(amm.tokenProgramId.equals(TOKEN_PROGRAM_ID));
+    assert(amm.poolMint.equals(tokenPool));
+    assert(amm.tokenSolMint.equals(mintA));
+    assert(amm.tokenBMint.equals(mintB));
+    assert(amm.tokenSolAccount.equals(tokenAccountA));
+    assert(amm.tokenBAccount.equals(tokenAccountB));
   });
 });
