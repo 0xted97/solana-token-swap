@@ -24,18 +24,18 @@ pub fn setup_pool(
     }
 
     // Check is Wrapped SOL Mint.
-    if ctx.accounts.token_sol_account.mint != ID {
+    if ctx.accounts.token_a_account.mint != ID {
         return Err(SwapError::InvalidProgramAddress.into());
     }
 
     // Check owner tokens token
-    if ctx.accounts.swap_authority.key() != ctx.accounts.token_sol_account.owner.key() {
+    if ctx.accounts.swap_authority.key() != ctx.accounts.token_a_account.owner.key() {
         return Err(SwapError::InvalidOwner.into());
     }
     if ctx.accounts.swap_authority.key() != ctx.accounts.token_b_account.owner.key() {
         return Err(SwapError::InvalidOwner.into());
     }
-    if ctx.accounts.token_sol_account.mint == ctx.accounts.token_b_account.mint.key() {
+    if ctx.accounts.token_a_account.mint == ctx.accounts.token_b_account.mint.key() {
         return Err(SwapError::RepeatedMint.into());
     }
     if ctx.accounts.swap_authority.key() == ctx.accounts.fee_account.owner
@@ -51,7 +51,7 @@ pub fn setup_pool(
     // Validate pool
     let curve = build_curve(constant_price).unwrap();
     curve.calculator.validate_supply(
-        ctx.accounts.token_sol_account.amount,
+        ctx.accounts.token_a_account.amount,
         ctx.accounts.token_b_account.amount,
     )?;
     curve.calculator.validate()?;
@@ -59,12 +59,12 @@ pub fn setup_pool(
     fees.validate()?;
 
     // Check delegate?
-    if ctx.accounts.token_sol_account.delegate.is_some()
+    if ctx.accounts.token_a_account.delegate.is_some()
         || ctx.accounts.token_b_account.delegate.is_some()
     {
         return Err(SwapError::InvalidDelegate.into());
     }
-    if ctx.accounts.token_sol_account.close_authority.is_some()
+    if ctx.accounts.token_a_account.close_authority.is_some()
         || ctx.accounts.token_b_account.close_authority.is_some()
     {
         return Err(SwapError::InvalidCloseAuthority.into());
@@ -97,10 +97,10 @@ pub fn setup_pool(
     amm.fees_input = fees_input;
 
     amm.pool_mint = ctx.accounts.pool_mint.key();
-    amm.token_sol_mint = ctx.accounts.token_sol_account.mint;
+    amm.token_a_mint = ctx.accounts.token_a_account.mint;
     amm.token_b_mint = ctx.accounts.token_b_account.mint;
 
-    amm.token_sol_account = ctx.accounts.token_sol_account.key();
+    amm.token_a_account = ctx.accounts.token_a_account.key();
     amm.token_b_account = ctx.accounts.token_b_account.key();
     amm.pool_fee_account = ctx.accounts.fee_account.key();
 
@@ -117,7 +117,7 @@ pub struct SetupPool<'info> {
     #[account(init, payer=initializer, space=999)]
     pub amm: Account<'info, Amm>,
 
-    pub token_sol_account: Account<'info, TokenAccount>, // WRAP SOL
+    pub token_a_account: Account<'info, TokenAccount>, // WRAP SOL
     pub token_b_account: Account<'info, TokenAccount>,   // Any SPL Token
 
     #[account(mut)]

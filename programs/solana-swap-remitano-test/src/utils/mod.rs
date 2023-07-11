@@ -23,7 +23,7 @@ pub fn check_accounts(
     if authority_info.key() != authority_id(&program_id, &amm_account_info.key(), amm.bump_seed)? {
         return Err(SwapError::InvalidProgramAddress.into());
     }
-    if token_a_info.key() != amm.token_sol_account.key() {
+    if token_a_info.key() != amm.token_a_account.key() {
         return Err(SwapError::IncorrectSwapAccount.into());
     }
     if token_b_info.key() != amm.token_b_mint.key() {

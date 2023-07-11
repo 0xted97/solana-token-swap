@@ -23,11 +23,11 @@ pub fn deposit_all_token_types(
         ctx.program_id.key(),
         amm.to_account_info(),
         ctx.accounts.swap_authority.to_account_info(),
-        ctx.accounts.token_sol_account.to_account_info(),
+        ctx.accounts.token_a_account.to_account_info(),
         ctx.accounts.token_b_account.to_account_info(),
         ctx.accounts.pool_mint.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
-        Some(ctx.accounts.source_sol_info.to_account_info()),
+        Some(ctx.accounts.source_a_info.to_account_info()),
         Some(ctx.accounts.source_b_info.to_account_info()),
         None,
     )?;
@@ -47,17 +47,17 @@ pub fn deposit_all_token_types(
         .pool_tokens_to_trading_tokens(
             pool_token_amount,
             pool_mint_supply,
-            u128::try_from(ctx.accounts.token_sol_account.amount).unwrap(),
+            u128::try_from(ctx.accounts.token_a_account.amount).unwrap(),
             u128::try_from(ctx.accounts.token_b_account.amount).unwrap(),
             RoundDirection::Ceiling,
         )
         .ok_or(SwapError::ZeroTradingTokens)?;
 
-    let token_sol_amount = u64::try_from(ctx.accounts.token_sol_account.amount).unwrap();
-    if token_sol_amount > maximum_token_a_amount {
+    let token_a_amount = u64::try_from(ctx.accounts.token_a_account.amount).unwrap();
+    if token_a_amount > maximum_token_a_amount {
         return Err(SwapError::ExceededSlippage.into());
     }
-    if token_sol_amount == 0 {
+    if token_a_amount == 0 {
         return Err(SwapError::ZeroTradingTokens.into());
     }
 
@@ -79,7 +79,7 @@ pub fn deposit_all_token_types(
     // Transfer token
     token::transfer(
         ctx.accounts.into_transfer_to_token_a_context(),
-        token_sol_amount,
+        token_a_amount,
     )?;
 
     token::transfer(
@@ -104,13 +104,13 @@ pub struct DepositAllTokenTypes<'info> {
     pub user_transfer_authority_info: AccountInfo<'info>,
     /// CHECK: Safe
     #[account(mut)]
-    pub source_sol_info: AccountInfo<'info>, // User
+    pub source_a_info: AccountInfo<'info>, // User
     /// CHECK: Safe
     #[account(mut)]
     pub source_b_info: AccountInfo<'info>, // User
 
     #[account(mut)]
-    pub token_sol_account: Account<'info, TokenAccount>, // Pool: WRAP SOL
+    pub token_a_account: Account<'info, TokenAccount>, // Pool: WRAP SOL
     #[account(mut)]
     pub token_b_account: Account<'info, TokenAccount>, // Pool: Any SPL Token
 
@@ -130,8 +130,8 @@ pub struct DepositAllTokenTypes<'info> {
 impl<'info> DepositAllTokenTypes<'info> {
     fn into_transfer_to_token_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
-            from: self.source_sol_info.to_account_info().clone(),
-            to: self.token_sol_account.to_account_info().clone(),
+            from: self.source_a_info.to_account_info().clone(),
+            to: self.token_a_account.to_account_info().clone(),
             authority: self.user_transfer_authority_info.clone(),
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)

@@ -178,7 +178,7 @@ describe("solana-swap", () => {
       amm: ammAccount.publicKey,
       poolMint: tokenPool,
       swapAuthority: authority,
-      tokenSolAccount: tokenAccountA,
+      tokenAAccount: tokenAccountA,
       tokenBAccount: tokenAccountB,
       feeAccount: feeAccount, // feeAccount
       destination: tokenAccountPool,
@@ -189,9 +189,9 @@ describe("solana-swap", () => {
 
     assert(amm.tokenProgramId.equals(TOKEN_PROGRAM_ID));
     assert(amm.poolMint.equals(tokenPool));
-    assert(amm.tokenSolMint.equals(mintA));
+    assert(amm.tokenAMint.equals(mintA));
     assert(amm.tokenBMint.equals(mintB));
-    assert(amm.tokenSolAccount.equals(tokenAccountA));
+    assert(amm.tokenAAccount.equals(tokenAccountA));
     assert(amm.tokenBAccount.equals(tokenAccountB));
     assert(amm.constantPrice == amm.constantPrice);
     

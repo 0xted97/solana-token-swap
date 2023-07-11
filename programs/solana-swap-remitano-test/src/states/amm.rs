@@ -51,11 +51,11 @@ pub struct Amm {
 
 
     pub pool_mint: Pubkey,
-    pub token_sol_mint: Pubkey,
+    pub token_a_mint: Pubkey,
     pub token_b_mint: Pubkey,
     
 
-    pub token_sol_account: Pubkey,
+    pub token_a_account: Pubkey,
     pub token_b_account: Pubkey,
     pub pool_fee_account: Pubkey,
 
