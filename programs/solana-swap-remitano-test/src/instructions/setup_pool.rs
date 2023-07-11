@@ -9,17 +9,15 @@ pub fn setup_pool(
     fees_input: FeesInput,
     constant_price: u64,
 ) -> Result<()> {
-    let amm = &mut ctx.accounts.amm;
-
     // Is Initialized?
-    if amm.is_initialized {
+    if ctx.accounts.amm.is_initialized {
         return err!(SwapError::AlreadyInUse);
     }
     // Validate swap_authority
     let (swap_authority, bump_seed) =
-        Pubkey::find_program_address(&[&amm.to_account_info().key().to_bytes()], ctx.program_id);
+        Pubkey::find_program_address(&[&ctx.accounts.amm.to_account_info().key().to_bytes()], ctx.program_id);
 
-    let seeds = &[&amm.to_account_info().key.to_bytes(), &[bump_seed][..]];
+    let seeds = &[&ctx.accounts.amm.to_account_info().key.to_bytes(), &[bump_seed][..]];
 
     if ctx.accounts.swap_authority.key() != swap_authority {
         return Err(SwapError::InvalidProgramAddress.into());
@@ -61,10 +59,14 @@ pub fn setup_pool(
     fees.validate()?;
 
     // Check delegate?
-    if ctx.accounts.token_sol_account.delegate.is_some() || ctx.accounts.token_b_account.delegate.is_some() {
+    if ctx.accounts.token_sol_account.delegate.is_some()
+        || ctx.accounts.token_b_account.delegate.is_some()
+    {
         return Err(SwapError::InvalidDelegate.into());
     }
-    if ctx.accounts.token_sol_account.close_authority.is_some() || ctx.accounts.token_b_account.close_authority.is_some() {
+    if ctx.accounts.token_sol_account.close_authority.is_some()
+        || ctx.accounts.token_b_account.close_authority.is_some()
+    {
         return Err(SwapError::InvalidCloseAuthority.into());
     }
     if ctx.accounts.pool_mint.supply != 0 {
@@ -77,22 +79,16 @@ pub fn setup_pool(
         return Err(SwapError::IncorrectPoolMint.into());
     }
 
-
     let initial_amount = curve.calculator.new_pool_supply();
     // Mint LP Token
-    let mint_initial_amt_cpi_ctx = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
-        MintTo {
-            mint: ctx.accounts.pool_mint.to_account_info().clone(),
-            to: ctx.accounts.destination.to_account_info().clone(),
-            authority: ctx.accounts.swap_authority.clone(),
-        },
-    );
-
     token::mint_to(
-        mint_initial_amt_cpi_ctx.with_signer(&[&seeds[..]]),
+        ctx.accounts
+            .into_mint_to_context()
+            .with_signer(&[&seeds[..]]),
         u64::try_from(initial_amount).unwrap(),
     )?;
+
+    let amm = &mut ctx.accounts.amm;
 
     // Update AMM state
     amm.is_initialized = true;
@@ -135,4 +131,15 @@ pub struct SetupPool<'info> {
     pub initializer: Signer<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+}
+
+impl<'info> SetupPool<'info> {
+    fn into_mint_to_context(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: self.pool_mint.to_account_info().clone(),
+            to: self.destination.to_account_info().clone(),
+            authority: self.swap_authority.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
 }

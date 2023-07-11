@@ -65,6 +65,7 @@ describe("solana-swap", () => {
       program.programId
     );
     authority = found[0];
+    console.log("🚀 ~ file: solana-swap.ts:68 ~ beforeEach ~ authority:", authority)
     bumpSeed = found[1];
 
     // Create WRAP SOL
@@ -82,7 +83,6 @@ describe("solana-swap", () => {
 
     feeAccount = getAssociatedTokenAddressSync(tokenPool, feeOwner, true);
     transCreateTokenAccount.add(createAssociatedTokenAccountInstruction(payer.publicKey, feeAccount, feeOwner, tokenPool));
-    console.log("🚀 ~ file: solana-swap.ts:72 ~ beforeEach ~ feeAccount:", feeAccount)
 
     // Create WSOL and Move Mint
     mintA = NATIVE_MINT;
@@ -193,5 +193,11 @@ describe("solana-swap", () => {
     assert(amm.tokenBMint.equals(mintB));
     assert(amm.tokenSolAccount.equals(tokenAccountA));
     assert(amm.tokenBAccount.equals(tokenAccountB));
+    assert(amm.constantPrice == amm.constantPrice);
+    
+    
+    console.log("🚀 ~ file: solana-swap.ts:199 ~ it ~ tokenAccountPool:", await provider.connection.getAccountInfo(tokenAccountPool))
+
+    // Check some fees_input
   });
 });
