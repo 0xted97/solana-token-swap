@@ -100,6 +100,7 @@ pub fn setup_pool(
     amm.constant_price = constant_price;
     amm.fees_input = fees_input;
 
+    amm.pool_mint = ctx.accounts.pool_mint.key();
     amm.token_sol_mint = ctx.accounts.token_sol_account.mint;
     amm.token_b_mint = ctx.accounts.token_b_account.mint;
 

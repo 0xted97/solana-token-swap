@@ -50,6 +50,7 @@ pub struct Amm {
     pub bump_seed: u8,
 
 
+    pub pool_mint: Pubkey,
     pub token_sol_mint: Pubkey,
     pub token_b_mint: Pubkey,
     
