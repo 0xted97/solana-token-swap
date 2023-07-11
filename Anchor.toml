@@ -2,7 +2,7 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-solana_swap_remitano_test = "GhYNz1LcUJgRYC6D6Qn4jfkAg7hgTrzuoT53QcnmJb5V"
+solana_swap = "GhYNz1LcUJgRYC6D6Qn4jfkAg7hgTrzuoT53QcnmJb5V"
 
 [registry]
 url = "https://api.apr.dev"

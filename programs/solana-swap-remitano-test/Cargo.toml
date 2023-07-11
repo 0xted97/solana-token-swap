@@ -6,7 +6,7 @@ edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "solana_swap_remitano_test"
+name = "solana_swap"
 
 [features]
 no-entrypoint = []
@@ -17,3 +17,11 @@ default = []
 
 [dependencies]
 anchor-lang = "0.28.0"
+anchor-spl = "0.28.0"
+num-traits = "0.2"
+num-derive = "0.3"
+arrayref = "0.3.6"
+solana-program = "1.10.0"
+spl-math = {version = "0.1", features = ["no-entrypoint"]}
+spl-token = {version = "3.3.0", features = ["no-entrypoint"]}
+
