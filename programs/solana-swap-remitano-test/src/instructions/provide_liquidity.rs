@@ -53,7 +53,7 @@ pub fn deposit_all_token_types(
         )
         .ok_or(SwapError::ZeroTradingTokens)?;
 
-    let token_a_amount = u64::try_from(ctx.accounts.token_a_account.amount).unwrap();
+    let token_a_amount = u64::try_from(results.token_a_amount).unwrap();
     if token_a_amount > maximum_token_a_amount {
         return Err(SwapError::ExceededSlippage.into());
     }
@@ -61,7 +61,7 @@ pub fn deposit_all_token_types(
         return Err(SwapError::ZeroTradingTokens.into());
     }
 
-    let token_b_amount = u64::try_from(ctx.accounts.token_b_account.amount).unwrap();
+    let token_b_amount = u64::try_from(results.token_b_amount).unwrap();
     if token_b_amount > maximum_token_b_amount {
         return Err(SwapError::ExceededSlippage.into());
     }
@@ -78,17 +78,26 @@ pub fn deposit_all_token_types(
 
     // Transfer token
     token::transfer(
-        ctx.accounts.into_transfer_to_token_a_context(),
+        ctx.accounts
+            .into_transfer_to_token_a_context()
+            .with_signer(&[&seeds[..]]),
         token_a_amount,
     )?;
 
     token::transfer(
-        ctx.accounts.into_transfer_to_token_b_context(),
+        ctx.accounts
+            .into_transfer_to_token_b_context()
+            .with_signer(&[&seeds[..]]),
         token_b_amount,
     )?;
     // Mint LP
 
-    token::mint_to(ctx.accounts.into_mint_to_context(), pool_amount_token)?;
+    token::mint_to(
+        ctx.accounts
+            .into_mint_to_context()
+            .with_signer(&[&seeds[..]]),
+        pool_amount_token,
+    )?;
 
     Ok(())
 }
@@ -114,8 +123,6 @@ pub struct DepositAllTokenTypes<'info> {
     #[account(mut)]
     pub token_b_account: Account<'info, TokenAccount>, // Pool: Any SPL Token
 
-    #[account(mut)]
-    pub fee_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub pool_mint: Account<'info, Mint>,
 

@@ -26,7 +26,7 @@ pub fn check_accounts(
     if token_a_info.key() != amm.token_a_account.key() {
         return Err(SwapError::IncorrectSwapAccount.into());
     }
-    if token_b_info.key() != amm.token_b_mint.key() {
+    if token_b_info.key() != amm.token_b_account.key() {
         return Err(SwapError::IncorrectSwapAccount.into());
     }
     if pool_mint_info.key() != amm.pool_mint.key() {
