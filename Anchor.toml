@@ -2,10 +2,13 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-solana_swap = "GhYNz1LcUJgRYC6D6Qn4jfkAg7hgTrzuoT53QcnmJb5V"
+solana_swap = "9CcZgrQxu4UE72Z7DqFxoGxkhicvqKNWmNbThtPRz62a"
+[programs.devnet]
+solana_swap = "9CcZgrQxu4UE72Z7DqFxoGxkhicvqKNWmNbThtPRz62a"
 
 [registry]
 url = "https://api.apr.dev"
+
 
 [provider]
 cluster = "Localnet"

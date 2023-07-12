@@ -8,7 +8,7 @@ pub mod instructions;
 pub mod states;
 pub mod utils;
 
-declare_id!("GhYNz1LcUJgRYC6D6Qn4jfkAg7hgTrzuoT53QcnmJb5V");
+declare_id!("9CcZgrQxu4UE72Z7DqFxoGxkhicvqKNWmNbThtPRz62a");
 
 #[program]
 pub mod solana_swap {
