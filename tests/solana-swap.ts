@@ -57,10 +57,6 @@ describe("solana-swap", () => {
   anchor.setProvider(provider);
   const { connection } = provider;
 
-
-
-
-
   // Generate account
   const payer = anchor.web3.Keypair.fromSecretKey(
     new Uint8Array([
@@ -90,7 +86,7 @@ describe("solana-swap", () => {
 
 
   // Pool fees & Curve
-  let constant_price = 1;
+  let constant_price = 10;
   const TRADING_FEE_NUMERATOR = 0;
   const TRADING_FEE_DENOMINATOR = 1;
   const OWNER_TRADING_FEE_NUMERATOR = 0;
@@ -101,14 +97,14 @@ describe("solana-swap", () => {
   const HOST_FEE_DENOMINATOR = 1;
 
   // Initial amount in each swap token
-  let currentSwapTokenA = 1 * 1e9;
+  let currentSwapTokenA = 10 * 1e9;
   let currentSwapTokenB = 1 * 1e9;
   let currentFeeAmount = 0;
 
   const SWAP_FEE = 0;
   const HOST_SWAP_FEE = 0;
   const SWAP_AMOUNT_IN = 100000;
-  const SWAP_AMOUNT_OUT = 100000;
+  const SWAP_AMOUNT_OUT = 10000;
   const OWNER_SWAP_FEE = 0;
   const POOL_TOKEN_AMOUNT = 10000000;
   const DEFAULT_POOL_TOKEN_AMOUNT = 1000000000;
@@ -117,13 +113,13 @@ describe("solana-swap", () => {
 
 
   before(async () => {
-    // await provider.connection.confirmTransaction(
-    //   await provider.connection.requestAirdrop(
-    //     payer.publicKey,
-    //     100000 * LAMPORTS_PER_SOL
-    //   ),
-    //   "confirmed"
-    // );
+    await provider.connection.confirmTransaction(
+      await provider.connection.requestAirdrop(
+        payer.publicKey,
+        100000 * LAMPORTS_PER_SOL
+      ),
+      "confirmed"
+    );
     // await provider.connection.confirmTransaction(
     //   await provider.connection.requestAirdrop(
     //     owner.publicKey,
@@ -309,9 +305,6 @@ describe("solana-swap", () => {
         getAccount(connection, tokenAccountB),
       ]);
       const supply = new anchor.BN(poolMintInfo.supply.toString()).toNumber();
-      console.log("🚀 ~ file: solana-swap.ts:281 ~ it ~ swapTokenA:", swapTokenA.amount)
-      console.log("🚀 ~ file: solana-swap.ts:281 ~ it ~ swapTokenB:", swapTokenB.amount)
-
 
       const tokenAAmount = Math.floor(
         (new anchor.BN(swapTokenA.amount.toString()).toNumber() * POOL_TOKEN_AMOUNT) / supply
@@ -330,7 +323,7 @@ describe("solana-swap", () => {
         userAccountA,
         userTransferAuthority.publicKey,
         owner,
-        tokenBAmount
+        tokenAAmount
       );
 
        // W-SOL
@@ -340,7 +333,7 @@ describe("solana-swap", () => {
          SystemProgram.transfer({
            fromPubkey: payer.publicKey,
            toPubkey: userAccountB,
-           lamports: tokenAAmount,
+           lamports: tokenBAmount,
          }),
          createSyncNativeInstruction(userAccountB)
        ), [payer]);
@@ -350,7 +343,7 @@ describe("solana-swap", () => {
          userAccountB,
          userTransferAuthority.publicKey,
          owner,
-         tokenAAmount
+         tokenBAmount
        );
 
 
