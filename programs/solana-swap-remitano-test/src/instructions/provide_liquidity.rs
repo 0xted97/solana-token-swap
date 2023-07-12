@@ -42,6 +42,8 @@ pub fn deposit_all_token_types(
     } else {
         (calculator.new_pool_supply(), calculator.new_pool_supply())
     };
+    msg!("pool_token_amount: {}", pool_token_amount);
+    msg!("pool_mint_supply: {}", pool_mint_supply);
     // Still check slippage
     let results = calculator
         .pool_tokens_to_trading_tokens(
@@ -60,7 +62,6 @@ pub fn deposit_all_token_types(
     if token_a_amount == 0 {
         return Err(SwapError::ZeroTradingTokens.into());
     }
-
     let token_b_amount = u64::try_from(results.token_b_amount).unwrap();
     if token_b_amount > maximum_token_b_amount {
         return Err(SwapError::ExceededSlippage.into());

@@ -97,8 +97,8 @@ pub fn setup_pool(
     amm.fees_input = fees_input;
 
     amm.pool_mint = ctx.accounts.pool_mint.key();
-    amm.token_a_mint = ctx.accounts.token_a_account.mint;
-    amm.token_b_mint = ctx.accounts.token_b_account.mint;
+    amm.token_a_mint = ctx.accounts.token_a_account.mint.key();
+    amm.token_b_mint = ctx.accounts.token_b_account.mint.key();
 
     amm.token_a_account = ctx.accounts.token_a_account.key();
     amm.token_b_account = ctx.accounts.token_b_account.key();
