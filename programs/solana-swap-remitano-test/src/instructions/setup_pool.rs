@@ -1,8 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, spl_token::native_mint::ID, Mint, MintTo, Token, TokenAccount};
+use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
 use solana_program::program_option::COption;
 
-use crate::{errors::SwapError, states::amm::*};
+use crate::{errors::SwapError, states::amm::*, utils::SWAP_CONSTRAINTS};
 
 pub fn setup_pool(
     ctx: Context<SetupPool>,
@@ -14,20 +14,19 @@ pub fn setup_pool(
         return err!(SwapError::AlreadyInUse);
     }
     // Validate swap_authority
-    let (swap_authority, bump_seed) =
-        Pubkey::find_program_address(&[&ctx.accounts.amm.to_account_info().key().to_bytes()], ctx.program_id);
+    let (swap_authority, bump_seed) = Pubkey::find_program_address(
+        &[&ctx.accounts.amm.to_account_info().key().to_bytes()],
+        ctx.program_id,
+    );
 
-    let seeds = &[&ctx.accounts.amm.to_account_info().key.to_bytes(), &[bump_seed][..]];
+    let seeds = &[
+        &ctx.accounts.amm.to_account_info().key.to_bytes(),
+        &[bump_seed][..],
+    ];
 
     if ctx.accounts.swap_authority.key() != swap_authority {
         return Err(SwapError::InvalidProgramAddress.into());
     }
-
-    // Check is Wrapped SOL Mint.
-    if ctx.accounts.token_a_account.mint != ID {
-        return Err(SwapError::InvalidProgramAddress.into());
-    }
-
     // Check owner tokens token
     if ctx.accounts.swap_authority.key() != ctx.accounts.token_a_account.owner.key() {
         return Err(SwapError::InvalidOwner.into());
@@ -54,9 +53,21 @@ pub fn setup_pool(
         ctx.accounts.token_a_account.amount,
         ctx.accounts.token_b_account.amount,
     )?;
-    curve.calculator.validate()?;
     let fees = build_fees(&fees_input)?;
+
+    if let Some(swap_constraints) = SWAP_CONSTRAINTS {
+        let owner_key = swap_constraints
+            .owner_key
+            .parse::<Pubkey>()
+            .map_err(|_| SwapError::InvalidOwner)?;
+        if ctx.accounts.fee_account.owner != owner_key {
+            return Err(SwapError::InvalidOwner.into());
+        }
+        swap_constraints.validate_curve(&curve)?;
+        swap_constraints.validate_fees(&fees)?;
+    }
     fees.validate()?;
+    curve.calculator.validate()?;
 
     // Check delegate?
     if ctx.accounts.token_a_account.delegate.is_some()
@@ -118,7 +129,7 @@ pub struct SetupPool<'info> {
     pub amm: Account<'info, Amm>,
 
     pub token_a_account: Account<'info, TokenAccount>, // WRAP SOL
-    pub token_b_account: Account<'info, TokenAccount>,   // Any SPL Token
+    pub token_b_account: Account<'info, TokenAccount>, // Any SPL Token
 
     #[account(mut)]
     pub pool_mint: Account<'info, Mint>,

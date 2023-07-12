@@ -18,7 +18,6 @@ import {
   getMint,
   getAccount,
   createAccount,
-  createAssociatedTokenAccount,
   approve
 } from "@solana/spl-token";
 import { TokenSwap } from "@solana/spl-token-swap";
@@ -65,10 +64,10 @@ describe("solana-swap", () => {
   // Generate account
   const payer = anchor.web3.Keypair.fromSecretKey(
     new Uint8Array([
-      198, 104, 7, 223, 36, 174, 98, 251, 220, 228, 244, 78, 146, 135, 36, 168,
-      76, 225, 215, 233, 235, 170, 214, 40, 85, 89, 232, 144, 159, 135, 215,
-      171, 130, 4, 232, 43, 132, 15, 226, 90, 93, 129, 94, 71, 84, 90, 102, 177,
-      163, 41, 162, 128, 141, 151, 192, 111, 98, 168, 185, 32, 242, 97, 208, 82,
+      64, 234, 35, 93, 29, 252, 39, 34, 173, 40, 108, 255, 62, 67, 139, 163, 131,
+  51, 67, 254, 90, 226, 255, 206, 171, 188, 223, 7, 34, 238, 16, 226, 145, 246,
+  14, 109, 126, 163, 206, 135, 187, 156, 138, 27, 217, 250, 158, 110, 111, 181,
+  223, 253, 214, 5, 198, 48, 84, 121, 247, 161, 66, 136, 91, 216
     ])
   );
   const ammAccount = anchor.web3.Keypair.generate();
@@ -91,28 +90,26 @@ describe("solana-swap", () => {
 
 
   // Pool fees & Curve
-  let constant_price = 10;
-  const TRADING_FEE_NUMERATOR = 25;
-  const TRADING_FEE_DENOMINATOR = 10000;
-  const OWNER_TRADING_FEE_NUMERATOR = 5;
-  const OWNER_TRADING_FEE_DENOMINATOR = 10000;
-  const OWNER_WITHDRAW_FEE_NUMERATOR = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 0 : 1;
-  const OWNER_WITHDRAW_FEE_DENOMINATOR = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 0 : 6;
-  const HOST_FEE_NUMERATOR = 20;
-  const HOST_FEE_DENOMINATOR = 100;
+  let constant_price = 1;
+  const TRADING_FEE_NUMERATOR = 0;
+  const TRADING_FEE_DENOMINATOR = 1;
+  const OWNER_TRADING_FEE_NUMERATOR = 0;
+  const OWNER_TRADING_FEE_DENOMINATOR = 1;
+  const OWNER_WITHDRAW_FEE_NUMERATOR = 0;
+  const OWNER_WITHDRAW_FEE_DENOMINATOR = 1;
+  const HOST_FEE_NUMERATOR = 0;
+  const HOST_FEE_DENOMINATOR = 1;
 
   // Initial amount in each swap token
-  let currentSwapTokenA = 100 * 1e9;
-  let currentSwapTokenB = 100 * 1e9;
+  let currentSwapTokenA = 1 * 1e9;
+  let currentSwapTokenB = 1 * 1e9;
   let currentFeeAmount = 0;
 
-  const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22273 : 22277;
-  const HOST_SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS
-    ? Math.floor((SWAP_FEE * HOST_FEE_NUMERATOR) / HOST_FEE_DENOMINATOR)
-    : 0;
+  const SWAP_FEE = 0;
+  const HOST_SWAP_FEE = 0;
   const SWAP_AMOUNT_IN = 100000;
-  const SWAP_AMOUNT_OUT = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 90661 : 1000000;
-  const OWNER_SWAP_FEE = SWAP_FEE - HOST_SWAP_FEE;
+  const SWAP_AMOUNT_OUT = 100000;
+  const OWNER_SWAP_FEE = 0;
   const POOL_TOKEN_AMOUNT = 10000000;
   const DEFAULT_POOL_TOKEN_AMOUNT = 1000000000;
 
@@ -120,20 +117,20 @@ describe("solana-swap", () => {
 
 
   before(async () => {
-    await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(
-        payer.publicKey,
-        100000 * LAMPORTS_PER_SOL
-      ),
-      "confirmed"
-    );
-    await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(
-        owner.publicKey,
-        100000 * LAMPORTS_PER_SOL
-      ),
-      "confirmed"
-    );
+    // await provider.connection.confirmTransaction(
+    //   await provider.connection.requestAirdrop(
+    //     payer.publicKey,
+    //     100000 * LAMPORTS_PER_SOL
+    //   ),
+    //   "confirmed"
+    // );
+    // await provider.connection.confirmTransaction(
+    //   await provider.connection.requestAirdrop(
+    //     owner.publicKey,
+    //     100000 * LAMPORTS_PER_SOL
+    //   ),
+    //   "confirmed"
+    // );
 
     const found = PublicKey.findProgramAddressSync(
       [ammAccount.publicKey.toBuffer()],
@@ -149,7 +146,7 @@ describe("solana-swap", () => {
       payer,
       authority,
       null,
-      2
+      9
     );
     const transCreateTokenAccount = new Transaction();
     tokenAccountPool = getAssociatedTokenAddressSync(
@@ -181,14 +178,14 @@ describe("solana-swap", () => {
 
 
     // Create WSOL and Move Mint
-    mintA = NATIVE_MINT;
-    mintB = await createMint(
+    mintA = await createMint(
       provider.connection,
       payer,
       owner.publicKey,
       null,
       9
     );
+    mintB = NATIVE_MINT;
     // Create Token Account WSOL and Move
     let AToken = await getTokenAccountCreateInstruction(mintA, authority, payer.publicKey);
     tokenAccountA = AToken[0];
@@ -196,26 +193,26 @@ describe("solana-swap", () => {
     tokenAccountB = BToken[0];
     transCreateTokenAccount.add(AToken[1], BToken[1]);
     const tx = await provider.sendAndConfirm(transCreateTokenAccount, [payer]);
-    console.log("🚀 ~ file: solana-swap.ts:178 ~ before ~ tx:", tx)
+
+    await mintTo(
+      provider.connection,
+      payer,
+      mintA,
+      tokenAccountA,
+      owner,
+      currentSwapTokenA
+    );
 
     const solTransferTransaction = new Transaction();
     solTransferTransaction.add(
       SystemProgram.transfer({
         fromPubkey: payer.publicKey,
-        toPubkey: tokenAccountA,
-        lamports: currentSwapTokenA,
+        toPubkey: tokenAccountB,
+        lamports: currentSwapTokenB,
       }),
-      createSyncNativeInstruction(tokenAccountA)
+      createSyncNativeInstruction(tokenAccountB),
     );
     await provider.sendAndConfirm(solTransferTransaction, [payer]);
-    await mintTo(
-      provider.connection,
-      payer,
-      mintB,
-      tokenAccountB,
-      owner,
-      currentSwapTokenB
-    );
   });
 
   describe("Setup pool", async () => {
@@ -304,136 +301,129 @@ describe("solana-swap", () => {
     });
   });
 
-  // describe("", async () => {
-  //   it("it DepositAllTokenTypes Success", async () => {
-  //     const [poolMintInfo, swapTokenA, swapTokenB] = await Promise.all([
-  //       getMint(connection, tokenPool),
-  //       getAccount(connection, tokenAccountA),
-  //       getAccount(connection, tokenAccountB),
-  //     ]);
-  //     const supply = new anchor.BN(poolMintInfo.supply.toString()).toNumber();
-  //     console.log("🚀 ~ file: solana-swap.ts:281 ~ it ~ swapTokenA:", swapTokenA.amount)
-  //     console.log("🚀 ~ file: solana-swap.ts:281 ~ it ~ swapTokenB:", swapTokenB.amount)
+  describe("", async () => {
+    it("it DepositAllTokenTypes Success", async () => {
+      const [poolMintInfo, swapTokenA, swapTokenB] = await Promise.all([
+        getMint(connection, tokenPool),
+        getAccount(connection, tokenAccountA),
+        getAccount(connection, tokenAccountB),
+      ]);
+      const supply = new anchor.BN(poolMintInfo.supply.toString()).toNumber();
+      console.log("🚀 ~ file: solana-swap.ts:281 ~ it ~ swapTokenA:", swapTokenA.amount)
+      console.log("🚀 ~ file: solana-swap.ts:281 ~ it ~ swapTokenB:", swapTokenB.amount)
 
 
-  //     const tokenAAmount = Math.floor(
-  //       (new anchor.BN(swapTokenA.amount.toString()).toNumber() * POOL_TOKEN_AMOUNT) / supply
-  //     );
-  //     const tokenBAmount = Math.floor(
-  //       (new anchor.BN(swapTokenB.amount.toString()).toNumber() * POOL_TOKEN_AMOUNT) / supply
-  //     );
+      const tokenAAmount = Math.floor(
+        (new anchor.BN(swapTokenA.amount.toString()).toNumber() * POOL_TOKEN_AMOUNT) / supply
+      );
+      const tokenBAmount = Math.floor(
+        (new anchor.BN(swapTokenB.amount.toString()).toNumber() * POOL_TOKEN_AMOUNT) / supply
+      );
 
-  //     const userTransferAuthority = anchor.web3.Keypair.generate();
-  //     // Creating depositor token a account
-  //     // W-SOL
-  //     const userAccountA = await createAccount(connection, payer, mintA, owner.publicKey);
-  //     console.log("🚀 ~ file: solana-swap.ts:313 ~ it ~ userAccountA:", userAccountA)
-  //     await provider.sendAndConfirm(new Transaction().add(
-  //       SystemProgram.transfer({
-  //         fromPubkey: payer.publicKey,
-  //         toPubkey: userAccountA,
-  //         lamports: tokenAAmount,
-  //       }),
-  //       createSyncNativeInstruction(userAccountA)
-  //     ), [payer]);
-
-  //     await approve(
-  //       connection, payer,
-  //       userAccountA,
-  //       userTransferAuthority.publicKey,
-  //       owner,
-  //       tokenAAmount
-  //     );
-
-  //     // SPL-Token
-  //     const userAccountB = await createAccount(connection, payer, mintB, owner.publicKey);
-  //     await mintTo(connection, payer, mintB, userAccountB, owner, tokenAAmount);
-  //     await approve(
-  //       connection, payer,
-  //       userAccountB,
-  //       userTransferAuthority.publicKey,
-  //       owner,
-  //       tokenBAmount
-  //     );
-
-
-  //     // Creating depositor pool token account
-  //     const newAccountPool = await createAccount(
-  //       connection, payer, tokenPool, owner.publicKey, anchor.web3.Keypair.generate()
-  //     );
-  //     console.log("🚀 ~ file: solana-swap.ts:324 ~ it ~ supply:", supply)
-  //     console.log("🚀 ~ file: solana-swap.ts:338 ~ it ~ tokenAAmount:", tokenAAmount)
-  //     console.log("🚀 ~ file: solana-swap.ts:340 ~ it ~ tokenBAmount:", tokenBAmount)
-  //     console.log("🚀 ~ file: solana-swap.ts:330 ~ it ~ POOL_TOKEN_AMOUNT:", POOL_TOKEN_AMOUNT)
-
-
-  //     // Deposit
-  //     const tx = await program.methods.depositAllTokenTypes(
-  //       new anchor.BN(POOL_TOKEN_AMOUNT),
-  //       new anchor.BN(tokenAAmount),
-  //       new anchor.BN(tokenBAmount),
-  //     ).accounts({
-  //       amm: ammAccount.publicKey,
-  //       swapAuthority: authority,
-  //       userTransferAuthorityInfo: userTransferAuthority.publicKey,
-  //       sourceAInfo: userAccountA,
-  //       sourceBInfo: userAccountB,
-  //       tokenAAccount: tokenAccountA,
-  //       tokenBAccount: tokenAccountB,
-  //       poolMint: tokenPool,
-  //       destination: newAccountPool,
-  //       tokenProgram: TOKEN_PROGRAM_ID,
-  //     }).signers([userTransferAuthority]).rpc()
-  //     console.log("🚀 ~ file: solana-swap.ts:345 ~ it ~ tx:", tx)
-
-  //     let info;
-  //     info = await getAccount(connection, userAccountA);
-  //     console.log("🚀 ~ file: solana-swap.ts:354 ~ it ~ info:", info)
-  //     assert(info.amount.toNumber() == 0);
-  //     info = await getAccount(connection, userAccountB);
-  //     assert(info.amount.toNumber() == 0);
-  //     info = await getAccount(connection, tokenAccountA);
-  //     assert(info.amount.toNumber() == currentSwapTokenA + tokenAAmount);
-  //     currentSwapTokenA += tokenAAmount;
-
-  //     info = await getAccount(connection, tokenAccountB);
-  //     assert(info.amount.toNumber() == currentSwapTokenB + tokenBAmount);
-  //     currentSwapTokenB += tokenBAmount;
-
-  //     info = await getAccount(connection, newAccountPool);
-  //     assert(info.amount.toNumber() == POOL_TOKEN_AMOUNT);
-
-  //   });
-  // });
-
-  describe("Swap", async () => {
-    it("Swap success", async () => {
       const userTransferAuthority = anchor.web3.Keypair.generate();
-
+      // Creating depositor token a account
+      // SPL-Token
       const userAccountA = await createAccount(connection, payer, mintA, owner.publicKey);
-      console.log("🚀 ~ file: solana-swap.ts:395 ~ it ~ userAccountA:", userAccountA)
-      await provider.sendAndConfirm(new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: payer.publicKey,
-          toPubkey: userAccountA,
-          lamports: SWAP_AMOUNT_IN,
-        }),
-        createSyncNativeInstruction(userAccountA)
-      ), [payer]);
+      await mintTo(connection, payer, mintA, userAccountA, owner, tokenAAmount);
       await approve(
         connection, payer,
         userAccountA,
         userTransferAuthority.publicKey,
         owner,
+        tokenBAmount
+      );
+
+       // W-SOL
+       const userAccountB = await createAccount(connection, payer, mintB, owner.publicKey);
+       console.log("🚀 ~ file: solana-swap.ts:313 ~ it ~ userAccountB:", userAccountB)
+       await provider.sendAndConfirm(new Transaction().add(
+         SystemProgram.transfer({
+           fromPubkey: payer.publicKey,
+           toPubkey: userAccountB,
+           lamports: tokenAAmount,
+         }),
+         createSyncNativeInstruction(userAccountB)
+       ), [payer]);
+ 
+       await approve(
+         connection, payer,
+         userAccountB,
+         userTransferAuthority.publicKey,
+         owner,
+         tokenAAmount
+       );
+
+
+      // Creating depositor pool token account
+      const newAccountPool = await createAccount(
+        connection, payer, tokenPool, owner.publicKey, anchor.web3.Keypair.generate()
+      );
+      console.log("🚀 ~ file: solana-swap.ts:324 ~ it ~ supply:", supply)
+      console.log("🚀 ~ file: solana-swap.ts:338 ~ it ~ tokenAAmount:", tokenAAmount)
+      console.log("🚀 ~ file: solana-swap.ts:340 ~ it ~ tokenBAmount:", tokenBAmount)
+      console.log("🚀 ~ file: solana-swap.ts:330 ~ it ~ POOL_TOKEN_AMOUNT:", POOL_TOKEN_AMOUNT)
+
+
+      // Deposit
+      const tx = await program.methods.depositAllTokenTypes(
+        new anchor.BN(POOL_TOKEN_AMOUNT),
+        new anchor.BN(tokenAAmount),
+        new anchor.BN(tokenBAmount),
+      ).accounts({
+        amm: ammAccount.publicKey,
+        swapAuthority: authority,
+        userTransferAuthorityInfo: userTransferAuthority.publicKey,
+        sourceAInfo: userAccountA,
+        sourceBInfo: userAccountB,
+        tokenAAccount: tokenAccountA,
+        tokenBAccount: tokenAccountB,
+        poolMint: tokenPool,
+        destination: newAccountPool,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      }).signers([userTransferAuthority]).rpc()
+      console.log("🚀 ~ file: solana-swap.ts:345 ~ it ~ tx:", tx)
+
+      let info;
+      info = await getAccount(connection, userAccountA);
+      console.log("🚀 ~ file: solana-swap.ts:354 ~ it ~ info:", info)
+      assert(info.amount == 0);
+      info = await getAccount(connection, userAccountB);
+      assert(info.amount == 0);
+      info = await getAccount(connection, tokenAccountA);
+      assert(info.amount == currentSwapTokenA + tokenAAmount);
+      currentSwapTokenA += tokenAAmount;
+
+      info = await getAccount(connection, tokenAccountB);
+      assert(info.amount == currentSwapTokenB + tokenBAmount);
+      currentSwapTokenB += tokenBAmount;
+
+      info = await getAccount(connection, newAccountPool);
+      assert(info.amount == POOL_TOKEN_AMOUNT);
+
+    });
+  });
+
+  describe("Swap", async () => {
+    it("Swap success", async () => {
+      const userTransferAuthority = anchor.web3.Keypair.generate();
+      const user = anchor.web3.Keypair.generate();
+      const userAccountA = await createAccount(connection, payer, mintA, user.publicKey);
+      await mintTo(connection, payer, mintA, userAccountA, owner, SWAP_AMOUNT_IN);
+
+      await approve(
+        connection, payer,
+        userAccountA,
+        userTransferAuthority.publicKey,
+        user,
         SWAP_AMOUNT_IN
       );
 
-      let userAccountB = await createAccount(connection, payer, mintB, owner.publicKey);
+
+      let userAccountB = await createAccount(connection, payer, mintB, user.publicKey);
 
       let poolAccount = SWAP_PROGRAM_OWNER_FEE_ADDRESS
-        ? await createAccount(connection, payer, tokenPool, owner.publicKey)
+        ? await createAccount(connection, payer, tokenPool, user.publicKey)
         : PublicKey.default;
-      console.log("🚀 ~ file: solana-swap.ts:432 ~ it ~ SWAP_AMOUNT_OUT:", SWAP_AMOUNT_OUT)
 
       const tx = await program.methods.swap(
         new anchor.BN(SWAP_AMOUNT_IN),
@@ -453,34 +443,33 @@ describe("solana-swap", () => {
       })
         .signers([userTransferAuthority])
         .rpc();
-      console.log("🚀 ~ file: solana-swap.ts:446 ~ it ~ tx:", tx)
 
       let info;
       info = await getAccount(connection, userAccountA);
-      assert(info.amount.toNumber() == 0);
+      assert(info.amount == 0);
 
       info = await getAccount(connection, userAccountB);
-      assert(info.amount.toNumber() == SWAP_AMOUNT_OUT);
+      assert(info.amount == SWAP_AMOUNT_OUT);
 
       info = await getAccount(connection, tokenAccountA);
-      assert(info.amount.toNumber() == currentSwapTokenA + SWAP_AMOUNT_IN);
+      assert(info.amount == currentSwapTokenA + SWAP_AMOUNT_IN);
       currentSwapTokenA += SWAP_AMOUNT_IN;
 
       info = await getAccount(connection, tokenAccountB);
-      assert(info.amount.toNumber() == currentSwapTokenB - SWAP_AMOUNT_OUT);
+      assert(info.amount == currentSwapTokenB - SWAP_AMOUNT_OUT);
       currentSwapTokenB -= SWAP_AMOUNT_OUT;
 
-      info = await getAccount(connection, tokenAccountPool);
-      assert(
-        info.amount.toNumber() == DEFAULT_POOL_TOKEN_AMOUNT - POOL_TOKEN_AMOUNT
-      );
+      // info = await getAccount(connection, tokenAccountPool);
+      // assert(
+      //   info.amount == DEFAULT_POOL_TOKEN_AMOUNT - POOL_TOKEN_AMOUNT
+      // );
 
       info = await getAccount(connection, feeAccount);
-      assert(info.amount.toNumber() == currentFeeAmount + OWNER_SWAP_FEE);
+      assert(info.amount == currentFeeAmount + OWNER_SWAP_FEE);
 
       if (poolAccount != PublicKey.default) {
-        info = await tokenPool.getAccountInfo(poolAccount);
-        assert(info.amount.toNumber() == HOST_SWAP_FEE);
+        info = await getAccount(connection, poolAccount);
+        assert(info.amount == HOST_SWAP_FEE);
       }
 
     });

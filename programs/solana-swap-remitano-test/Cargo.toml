@@ -22,6 +22,6 @@ num-traits = "0.2"
 num-derive = "0.3"
 arrayref = "0.3.6"
 solana-program = "1.10.0"
-spl-math = {version = "0.1", features = ["no-entrypoint"]}
+spl-math = {version = "0.2.0", features = ["no-entrypoint"]}
 spl-token = {version = "3.3.0", features = ["no-entrypoint"]}
 

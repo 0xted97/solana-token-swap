@@ -1,7 +1,62 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::SwapError, states::amm::*, accounts::Swap};
+use crate::{errors::SwapError, states::amm::*, curve::{fees::CurveFees, base::{CurveType, SwapCurve}}};
 
+pub struct SwapConstraints<'a> {
+    /// Owner of the program
+    pub owner_key: &'a str,
+    /// Valid curve types
+    pub valid_curve_types: &'a [CurveType],
+    /// Valid fees
+    pub fees: &'a CurveFees,
+}
+
+pub const SWAP_CONSTRAINTS: Option<SwapConstraints> = {
+    #[cfg(feature = "production")]
+    {
+        Some(SwapConstraints {
+            owner_key: OWNER_KEY,
+            valid_curve_types: VALID_CURVE_TYPES,
+            fees: FEES,
+        })
+    }
+    #[cfg(not(feature = "production"))]
+    {
+        None
+    }
+};
+
+impl<'a> SwapConstraints<'a> {
+    /// Checks that the provided curve is valid for the given constraints
+    pub fn validate_curve(&self, swap_curve: &SwapCurve) -> Result<()> {
+        if self
+            .valid_curve_types
+            .iter()
+            .any(|x| *x == swap_curve.curve_type)
+        {
+            Ok(())
+        } else {
+            Err(SwapError::UnsupportedCurveType.into())
+        }
+    }
+
+    /// Checks that the provided curve is valid for the given constraints
+    pub fn validate_fees(&self, fees: &CurveFees) -> Result<()> {
+        if fees.trade_fee_numerator >= self.fees.trade_fee_numerator
+            && fees.trade_fee_denominator == self.fees.trade_fee_denominator
+            && fees.owner_trade_fee_numerator >= self.fees.owner_trade_fee_numerator
+            && fees.owner_trade_fee_denominator == self.fees.owner_trade_fee_denominator
+            && fees.owner_withdraw_fee_numerator >= self.fees.owner_withdraw_fee_numerator
+            && fees.owner_withdraw_fee_denominator == self.fees.owner_withdraw_fee_denominator
+            && fees.host_fee_numerator == self.fees.host_fee_numerator
+            && fees.host_fee_denominator == self.fees.host_fee_denominator
+        {
+            Ok(())
+        } else {
+            Err(SwapError::InvalidFee.into())
+        }
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn check_accounts(
