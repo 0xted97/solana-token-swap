@@ -47,11 +47,16 @@ function main() {
         const [tokenBAccountAddress] = yield (0, configs_1.getTokenAccountCreateInstruction)(configs_1.tokenBMint, swapAuthority, configs_1.payer.publicKey); // Pool B
         const [tokenAUserAccountAddress, taci] = yield (0, configs_1.getTokenAccountCreateInstruction)(configs_1.tokenAMint, configs_1.user.publicKey, configs_1.payer.publicKey);
         const [tokenBUserAccountAddress, tbci] = yield (0, configs_1.getTokenAccountCreateInstruction)(configs_1.tokenBMint, configs_1.user.publicKey, configs_1.payer.publicKey);
-        // Create WSOL Account for User if user Close Account
-        const createWSOLTx = new web3.Transaction();
-        createWSOLTx.add(tbci);
-        const createAccountWSOL = yield configs_1.connection.sendTransaction(createWSOLTx, [configs_1.payer], { preflightCommitment: "finalized" });
-        console.log("🚀 ~ Create Account Hash:", createAccountWSOL);
+        try {
+            // Create WSOL Account for User if user Close Account
+            const createWSOLTx = new web3.Transaction();
+            createWSOLTx.add(tbci);
+            const createAccountWSOL = yield configs_1.connection.sendTransaction(createWSOLTx, [configs_1.payer], { preflightCommitment: "finalized" });
+            console.log("🚀 ~ Create Account Hash:", createAccountWSOL);
+        }
+        catch (error) {
+            console.log("🚀 ~ Create Account", error.message);
+        }
         yield (0, spl_token_1.mintTo)(configs_1.connection, configs_1.payer, configs_1.tokenAMint, tokenAUserAccountAddress, configs_1.payer, SWAP_AMOUNT_IN);
         yield (0, spl_token_1.approve)(configs_1.connection, configs_1.payer, tokenAUserAccountAddress, configs_1.userTransferAuthority.publicKey, configs_1.user, SWAP_AMOUNT_IN);
         const tx = yield configs_1.program.methods.swap(new anchor.BN(SWAP_AMOUNT_IN), new anchor.BN(SWAP_AMOUNT_OUT)).accounts({

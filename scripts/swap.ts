@@ -52,12 +52,16 @@ async function main() {
     payer.publicKey
   );
 
-  // Create WSOL Account for User if user Close Account
-  const createWSOLTx = new web3.Transaction();
-  createWSOLTx.add(tbci);
+  try {
+    // Create WSOL Account for User if user Close Account
+    const createWSOLTx = new web3.Transaction();
+    createWSOLTx.add(tbci);
 
-  const createAccountWSOL = await connection.sendTransaction(createWSOLTx, [payer], { preflightCommitment: "finalized" });
-  console.log("🚀 ~ Create Account Hash:", createAccountWSOL)
+    const createAccountWSOL = await connection.sendTransaction(createWSOLTx, [payer], { preflightCommitment: "finalized" });
+    console.log("🚀 ~ Create Account Hash:", createAccountWSOL);
+  } catch (error) {
+    console.log("🚀 ~ Create Account", error.message);
+  }
 
 
   await mintTo(connection, payer, tokenAMint, tokenAUserAccountAddress, payer, SWAP_AMOUNT_IN);
