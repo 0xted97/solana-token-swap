@@ -56,6 +56,7 @@ pub fn deposit_all_token_types(
         .ok_or(SwapError::ZeroTradingTokens)?;
 
     let token_a_amount = u64::try_from(results.token_a_amount).unwrap();
+    msg!("token_a_amount: {}", token_a_amount);
     if token_a_amount > maximum_token_a_amount {
         return Err(SwapError::ExceededSlippage.into());
     }
@@ -63,6 +64,7 @@ pub fn deposit_all_token_types(
         return Err(SwapError::ZeroTradingTokens.into());
     }
     let token_b_amount = u64::try_from(results.token_b_amount).unwrap();
+    msg!("token_b_amount: {}", token_b_amount);
     if token_b_amount > maximum_token_b_amount {
         return Err(SwapError::ExceededSlippage.into());
     }
@@ -105,7 +107,6 @@ pub fn deposit_all_token_types(
 
 #[derive(Accounts)]
 pub struct DepositAllTokenTypes<'info> {
-    #[account(mut)]
     pub amm: Account<'info, Amm>,
     /// CHECK: Safe
     pub swap_authority: AccountInfo<'info>,

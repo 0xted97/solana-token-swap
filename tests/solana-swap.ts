@@ -466,5 +466,75 @@ describe("solana-swap", () => {
       }
 
     });
+
+    it("Swap success 123", async () => {
+      const userTransferAuthority = anchor.web3.Keypair.generate();
+      const user = anchor.web3.Keypair.generate();
+      const userAccountA = await createAccount(connection, payer, mintA, user.publicKey);
+      await mintTo(connection, payer, mintA, userAccountA, owner, SWAP_AMOUNT_IN);
+
+      await approve(
+        connection, payer,
+        userAccountA,
+        userTransferAuthority.publicKey,
+        user,
+        SWAP_AMOUNT_IN
+      );
+
+
+      let userAccountB = await createAccount(connection, payer, mintB, user.publicKey);
+
+      let poolAccount = SWAP_PROGRAM_OWNER_FEE_ADDRESS
+        ? await createAccount(connection, payer, tokenPool, user.publicKey)
+        : PublicKey.default;
+
+      const tx = await program.methods.swap(
+        new anchor.BN(SWAP_AMOUNT_IN),
+        new anchor.BN(SWAP_AMOUNT_OUT),
+      ).accounts({
+        swapAuthority: authority,
+        amm: ammAccount.publicKey,
+        userTransferAuthority: userTransferAuthority.publicKey,
+        sourceInfo: userAccountA,
+        destinationInfo: userAccountB,
+        swapSource: tokenAccountA,
+        swapDestination: tokenAccountB,
+        poolMint: tokenPool,
+        feeAccount: feeAccount,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        hostFeeAccount: PublicKey.default,
+      })
+        .signers([userTransferAuthority])
+        .rpc();
+
+      let info;
+      info = await getAccount(connection, userAccountA);
+      assert(info.amount == 0);
+
+      info = await getAccount(connection, userAccountB);
+      assert(info.amount == SWAP_AMOUNT_OUT);
+
+      info = await getAccount(connection, tokenAccountA);
+      assert(info.amount == currentSwapTokenA + SWAP_AMOUNT_IN);
+      currentSwapTokenA += SWAP_AMOUNT_IN;
+
+      info = await getAccount(connection, tokenAccountB);
+      assert(info.amount == currentSwapTokenB - SWAP_AMOUNT_OUT);
+      currentSwapTokenB -= SWAP_AMOUNT_OUT;
+
+      // info = await getAccount(connection, tokenAccountPool);
+      // assert(
+      //   info.amount == DEFAULT_POOL_TOKEN_AMOUNT - POOL_TOKEN_AMOUNT
+      // );
+
+      info = await getAccount(connection, feeAccount);
+      assert(info.amount == currentFeeAmount + OWNER_SWAP_FEE);
+
+      if (poolAccount != PublicKey.default) {
+        info = await getAccount(connection, poolAccount);
+        assert(info.amount == HOST_SWAP_FEE);
+      }
+
+    });
   });
 });

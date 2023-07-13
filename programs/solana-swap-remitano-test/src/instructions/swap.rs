@@ -98,6 +98,7 @@ pub fn swap(ctx: Context<Swap>, amount_in: u64, minimum_amount_out: u64) -> Resu
         )
         .ok_or(SwapError::FeeCalculationFailure)?;
     
+    msg!("pool_token_amount:{}", pool_token_amount)
     if pool_token_amount > 0 {
         // Allow error to fall through
         if *ctx.accounts.host_fee_account.key != Pubkey::new_from_array([0; 32]) {
