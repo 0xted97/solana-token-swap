@@ -1,17 +1,16 @@
 import * as web3 from "@solana/web3.js";
 import * as anchor from "@project-serum/anchor";
-import { TOKEN_PROGRAM_ID, getMint, getAccount, } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, getMint, getAccount, mintTo, approve, createSyncNativeInstruction, } from "@solana/spl-token";
 import {
   loadKeyPair, getTokenAccountCreateInstruction,
   program, connection,
   tokenAMint, tokenBMint, poolMint, MY_SWAP_PROGRAM_ID,
-  feeOwner,
   amm,
   owner, payer, user, userTransferAuthority,
 } from "./configs";
 
 async function main() {
-  const POOL_TOKEN_AMOUNT = 10000000;
+  const POOL_TOKEN_AMOUNT = 100000;
 
   // ### Get Swap Pool Authority
   const [swapAuthority] = web3.PublicKey.findProgramAddressSync(
@@ -41,13 +40,10 @@ async function main() {
   const tokenAAmount = Math.floor(
     (new anchor.BN(swapTokenA.amount.toString()).toNumber() * POOL_TOKEN_AMOUNT) / supply
   );
-  console.log("🚀 ~ file: provide_liquidity.ts:92 ~ main ~ tokenAAmount:", tokenAAmount)
   const tokenBAmount = Math.floor(
     (new anchor.BN(swapTokenB.amount.toString()).toNumber() * POOL_TOKEN_AMOUNT) / supply
   );
-  console.log("🚀 ~ file: provide_liquidity.ts:96 ~ main ~ tokenBAmount:", tokenBAmount)
 
-  const initialAccountTx = new web3.Transaction();
   const [tokenAUserAccountAddress, taci] = await getTokenAccountCreateInstruction(
     tokenAMint,
     user.publicKey,
@@ -63,42 +59,50 @@ async function main() {
     user.publicKey,
     payer.publicKey
   );
-  initialAccountTx.add(tfci);
-  // const init = await connection.sendTransaction(initialAccountTx, [payer]);
-  // console.log("🚀 ~ file: index.ts:113 ~ main ~ init:", init)
 
-  // await mintTo(connection, payer, tokenAMint, tokenAUserAccountAddress, payer, tokenAAmount);
+  try {
+    // Create WSOL Account for User if user Close Account
+    const createWSOLTx = new web3.Transaction();
+    createWSOLTx.add(tbci);
 
-  // await approve(
-  //   connection, payer,
-  //   tokenAUserAccountAddress,
-  //   userTransferAuthority.publicKey,
-  //   user,
-  //   tokenAAmount
-  // );
+    const createAccountWSOL = await connection.sendTransaction(createWSOLTx, [payer], { preflightCommitment: "finalized" });
+    console.log("🚀 ~ Create Account Hash:", createAccountWSOL);
+  } catch (error) {
+    console.log("🚀 ~ Create Account", error.message);
+  }
 
-  // const sendWrapSolTx = await connection.sendTransaction(new web3.Transaction().add(
-  //   web3.SystemProgram.transfer({
-  //     fromPubkey: payer.publicKey,
-  //     toPubkey: tokenBUserAccountAddress,
-  //     lamports: tokenBAmount,
-  //   }),
-  //   createSyncNativeInstruction(tokenBUserAccountAddress),
-  // ), [payer]);
+  await mintTo(connection, payer, tokenAMint, tokenAUserAccountAddress, payer, tokenAAmount);
 
-  // await approve(
-  //   connection, payer,
-  //   tokenBUserAccountAddress,
-  //   userTransferAuthority.publicKey,
-  //   user,
-  //   tokenBAmount
-  // );
+  await approve(
+    connection, payer,
+    tokenAUserAccountAddress,
+    userTransferAuthority.publicKey,
+    user,
+    tokenAAmount
+  );
+
+  const sendWrapSolTx = await connection.sendTransaction(new web3.Transaction().add(
+    web3.SystemProgram.transfer({
+      fromPubkey: payer.publicKey,
+      toPubkey: tokenBUserAccountAddress,
+      lamports: tokenBAmount,
+    }),
+    createSyncNativeInstruction(tokenBUserAccountAddress),
+  ), [payer], { preflightCommitment: "finalized" });
+
+  await approve(
+    connection, payer,
+    tokenBUserAccountAddress,
+    userTransferAuthority.publicKey,
+    user,
+    tokenBAmount * 1e6,
+  );
 
   // Deposit
   const tx = await program.methods.depositAllTokenTypes(
     new anchor.BN(POOL_TOKEN_AMOUNT),
     new anchor.BN(tokenAAmount),
-    new anchor.BN(tokenBAmount + 1e8),
+    new anchor.BN(tokenBAmount * 1e6),
   ).accounts({
     amm: amm.publicKey,
     swapAuthority: swapAuthority,
