@@ -50,7 +50,7 @@ function main() {
         // Create WSOL Account for User if user Close Account
         const createWSOLTx = new web3.Transaction();
         createWSOLTx.add(tbci);
-        const createAccountWSOL = yield configs_1.connection.sendTransaction(createWSOLTx, [configs_1.payer]);
+        const createAccountWSOL = yield configs_1.connection.sendTransaction(createWSOLTx, [configs_1.payer], { preflightCommitment: "finalized" });
         console.log("🚀 ~ Create Account Hash:", createAccountWSOL);
         yield (0, spl_token_1.mintTo)(configs_1.connection, configs_1.payer, configs_1.tokenAMint, tokenAUserAccountAddress, configs_1.payer, SWAP_AMOUNT_IN);
         yield (0, spl_token_1.approve)(configs_1.connection, configs_1.payer, tokenAUserAccountAddress, configs_1.userTransferAuthority.publicKey, configs_1.user, SWAP_AMOUNT_IN);
@@ -74,7 +74,7 @@ function main() {
         let closeAccountWSOl = new web3.Transaction();
         closeAccountWSOl.add((0, spl_token_1.createCloseAccountInstruction)(tokenBUserAccountAddress, configs_1.user.publicKey, configs_1.user.publicKey));
         closeAccountWSOl.feePayer = configs_1.payer.publicKey;
-        console.log(`Close Hash: ${yield configs_1.connection.sendTransaction(closeAccountWSOl, [configs_1.payer, configs_1.user])}`);
+        console.log(`Close Hash: ${yield configs_1.connection.sendTransaction(closeAccountWSOl, [configs_1.payer, configs_1.user], { preflightCommitment: "finalized" })}`);
     });
 }
 main();

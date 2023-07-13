@@ -56,7 +56,7 @@ async function main() {
   const createWSOLTx = new web3.Transaction();
   createWSOLTx.add(tbci);
 
-  const createAccountWSOL = await connection.sendTransaction(createWSOLTx, [payer]);
+  const createAccountWSOL = await connection.sendTransaction(createWSOLTx, [payer], { preflightCommitment: "finalized" });
   console.log("🚀 ~ Create Account Hash:", createAccountWSOL)
 
 
@@ -101,6 +101,6 @@ async function main() {
   );
   closeAccountWSOl.feePayer = payer.publicKey;
 
-  console.log(`Close Hash: ${await connection.sendTransaction(closeAccountWSOl, [payer, user])}`);
+  console.log(`Close Hash: ${await connection.sendTransaction(closeAccountWSOl, [payer, user], { preflightCommitment: "finalized" })}`);
 }
 main();
