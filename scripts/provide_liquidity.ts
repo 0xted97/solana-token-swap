@@ -10,6 +10,7 @@ import {
 } from "./configs";
 
 async function main() {
+  const defaultSlippage = 0.5;
   const POOL_TOKEN_AMOUNT = 100000;
 
   // ### Get Swap Pool Authority
@@ -95,14 +96,14 @@ async function main() {
     tokenBUserAccountAddress,
     userTransferAuthority.publicKey,
     user,
-    tokenBAmount * 1e6,
+    tokenBAmount,
   );
 
   // Deposit
   const tx = await program.methods.depositAllTokenTypes(
     new anchor.BN(POOL_TOKEN_AMOUNT),
     new anchor.BN(tokenAAmount),
-    new anchor.BN(tokenBAmount * 1e6),
+    new anchor.BN(tokenBAmount + 1e6),
   ).accounts({
     amm: amm.publicKey,
     swapAuthority: swapAuthority,
