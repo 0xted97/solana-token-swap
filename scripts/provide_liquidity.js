@@ -49,34 +49,36 @@ function main() {
             (0, spl_token_1.getAccount)(configs_1.connection, tokenAAccountAddress),
             (0, spl_token_1.getAccount)(configs_1.connection, tokenBAccountAddress),
         ]);
-        console.log("🚀 ~ file: provide_liquidity.ts:83 ~ main ~ tokenAAccountAddress:", tokenAAccountAddress);
-        console.log("🚀 ~ file: provide_liquidity.ts:84 ~ main ~ tokenBAccountAddress:", tokenBAccountAddress);
         const supply = new anchor.BN(poolMintInfo.supply.toString()).toNumber(); // 1000000000, 10000000
-        const tokenAAmount = Math.floor((new anchor.BN(swapTokenA.amount.toString()).toNumber() * POOL_TOKEN_AMOUNT) / supply);
-        const tokenBAmount = Math.floor((new anchor.BN(swapTokenB.amount.toString()).toNumber() * POOL_TOKEN_AMOUNT) / supply);
-        const [tokenAUserAccountAddress, taci] = yield (0, configs_1.getTokenAccountCreateInstruction)(configs_1.tokenAMint, configs_1.user.publicKey, configs_1.payer.publicKey);
-        const [tokenBUserAccountAddress, tbci] = yield (0, configs_1.getTokenAccountCreateInstruction)(configs_1.tokenBMint, configs_1.user.publicKey, configs_1.payer.publicKey);
-        const [tokenPoolUserAccountAddress, tfci] = yield (0, configs_1.getTokenAccountCreateInstruction)(configs_1.poolMint, configs_1.user.publicKey, configs_1.payer.publicKey);
-        try {
-            // Create WSOL Account for User if user Close Account
-            const createWSOLTx = new web3.Transaction();
-            createWSOLTx.add(tbci);
-            const createAccountWSOL = yield configs_1.connection.sendTransaction(createWSOLTx, [configs_1.payer], { preflightCommitment: "finalized" });
-            console.log("🚀 ~ Create Account Hash:", createAccountWSOL);
-        }
-        catch (error) {
-            console.log("🚀 ~ Create Account", error.message);
-        }
-        yield (0, spl_token_1.mintTo)(configs_1.connection, configs_1.payer, configs_1.tokenAMint, tokenAUserAccountAddress, configs_1.payer, tokenAAmount);
-        yield (0, spl_token_1.approve)(configs_1.connection, configs_1.payer, tokenAUserAccountAddress, configs_1.userTransferAuthority.publicKey, configs_1.user, tokenAAmount);
-        const sendWrapSolTx = yield configs_1.connection.sendTransaction(new web3.Transaction().add(web3.SystemProgram.transfer({
+        let tokenAAmount = Math.floor((new anchor.BN(swapTokenA.amount.toString()).toNumber() * POOL_TOKEN_AMOUNT) / supply);
+        tokenAAmount = tokenAAmount + (defaultSlippage * tokenAAmount);
+        let tokenBAmount = Math.floor((new anchor.BN(swapTokenB.amount.toString()).toNumber() * POOL_TOKEN_AMOUNT) / supply);
+        tokenBAmount = tokenBAmount + (defaultSlippage * tokenBAmount);
+        const preTransaction = new web3.Transaction();
+        const [tokenAUserAccountAddress, taci] = yield (0, configs_1.getOrCreateAccount)(configs_1.connection, configs_1.tokenAMint, configs_1.user.publicKey, configs_1.payer.publicKey);
+        if (taci)
+            preTransaction.add(taci);
+        const [tokenBUserAccountAddress, tbci] = yield (0, configs_1.getOrCreateAccount)(configs_1.connection, configs_1.tokenBMint, configs_1.user.publicKey, configs_1.payer.publicKey);
+        if (tbci)
+            preTransaction.add(tbci);
+        const [tokenPoolUserAccountAddress, tfci] = yield (0, configs_1.getOrCreateAccount)(configs_1.connection, configs_1.poolMint, configs_1.user.publicKey, configs_1.payer.publicKey);
+        if (tfci)
+            preTransaction.add(tfci);
+        // Handle Token A Mint
+        const mintToInstruction = (0, spl_token_1.createMintToInstruction)(configs_1.tokenAMint, tokenAUserAccountAddress, configs_1.payer.publicKey, tokenAAmount);
+        preTransaction.add(mintToInstruction);
+        const approveIx = (0, spl_token_1.createApproveInstruction)(tokenAUserAccountAddress, configs_1.userTransferAuthority.publicKey, // delegate
+        configs_1.user.publicKey, tokenAAmount);
+        preTransaction.add(approveIx);
+        // Handle Token B Mint
+        preTransaction.add(web3.SystemProgram.transfer({
             fromPubkey: configs_1.payer.publicKey,
             toPubkey: tokenBUserAccountAddress,
             lamports: tokenBAmount,
-        }), (0, spl_token_1.createSyncNativeInstruction)(tokenBUserAccountAddress)), [configs_1.payer], { preflightCommitment: "finalized" });
-        yield (0, spl_token_1.approve)(configs_1.connection, configs_1.payer, tokenBUserAccountAddress, configs_1.userTransferAuthority.publicKey, configs_1.user, tokenBAmount);
+        }), (0, spl_token_1.createSyncNativeInstruction)(tokenBUserAccountAddress), (0, spl_token_1.createApproveInstruction)(tokenBUserAccountAddress, configs_1.userTransferAuthority.publicKey, // delegate
+        configs_1.user.publicKey, tokenBAmount));
         // Deposit
-        const tx = yield configs_1.program.methods.depositAllTokenTypes(new anchor.BN(POOL_TOKEN_AMOUNT), new anchor.BN(tokenAAmount), new anchor.BN(tokenBAmount + 1e6)).accounts({
+        const tx = yield configs_1.program.methods.depositAllTokenTypes(new anchor.BN(POOL_TOKEN_AMOUNT), new anchor.BN(tokenAAmount), new anchor.BN(tokenBAmount)).accounts({
             amm: configs_1.amm.publicKey,
             swapAuthority: swapAuthority,
             userTransferAuthorityInfo: configs_1.userTransferAuthority.publicKey,
@@ -87,8 +89,11 @@ function main() {
             poolMint: configs_1.poolMint,
             destination: tokenPoolUserAccountAddress,
             tokenProgram: spl_token_1.TOKEN_PROGRAM_ID,
-        }).signers([configs_1.userTransferAuthority]).rpc();
-        console.log("🚀 ~ file: provide_liquidity.ts:152 ~ main ~ tx:", tx);
+        })
+            .signers([configs_1.userTransferAuthority, configs_1.user])
+            .preInstructions(preTransaction.instructions)
+            .rpc();
+        console.log("🚀 ~ Provide liquidity Hash:", tx);
     });
 }
 main();
