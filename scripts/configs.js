@@ -35,7 +35,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadKeyPair = exports.getTokenAccountCreateInstruction = exports.program = exports.provider = exports.connection = exports.userTransferAuthority = exports.user = exports.amm = exports.feeOwner = exports.poolMint = exports.tokenBMint = exports.tokenAMint = exports.MY_SWAP_PROGRAM_ID = exports.owner = exports.payer = void 0;
+exports.getOrCreateAccount = exports.loadKeyPair = exports.getTokenAccountCreateInstruction = exports.program = exports.provider = exports.connection = exports.userTransferAuthority = exports.user = exports.amm = exports.feeOwner = exports.poolMint = exports.tokenBMint = exports.tokenAMint = exports.MY_SWAP_PROGRAM_ID = exports.owner = exports.payer = void 0;
 const fs = __importStar(require("fs"));
 const web3 = __importStar(require("@solana/web3.js"));
 const anchor = __importStar(require("@project-serum/anchor"));
@@ -47,6 +47,7 @@ exports.payer = web3.Keypair.fromSecretKey(new Uint8Array([
     14, 109, 126, 163, 206, 135, 187, 156, 138, 27, 217, 250, 158, 110, 111, 181,
     223, 253, 214, 5, 198, 48, 84, 121, 247, 161, 66, 136, 91, 216,
 ]));
+console.log("🚀 ~ file: configs.ts:15 ~ payer:", exports.payer.publicKey.toString());
 exports.owner = loadKeyPair("ownyQHDpiCCNdMtTQW5YSg2ALN1NenHk2h2qLJr9nki.json");
 exports.MY_SWAP_PROGRAM_ID = new web3.PublicKey("9CcZgrQxu4UE72Z7DqFxoGxkhicvqKNWmNbThtPRz62a");
 exports.tokenAMint = new web3.PublicKey("To9y3LHENHDU4tU78ockkSZwVuxfvtgbSKPjqjXrNYt");
@@ -80,3 +81,16 @@ function loadKeyPair(filename) {
     return secretKey;
 }
 exports.loadKeyPair = loadKeyPair;
+const getOrCreateAccount = (connection, mint, owner, payer) => __awaiter(void 0, void 0, void 0, function* () {
+    let tokenAccountAddress = yield (0, spl_token_1.getAssociatedTokenAddress)(mint, owner, true);
+    const tokenAccountInstruction = (0, spl_token_1.createAssociatedTokenAccountInstruction)(payer, tokenAccountAddress, owner, mint);
+    try {
+        // Check account created?
+        yield (0, spl_token_1.getAccount)(connection, tokenAccountAddress);
+        return [tokenAccountAddress, null];
+    }
+    catch (error) {
+        return [tokenAccountAddress, tokenAccountInstruction];
+    }
+});
+exports.getOrCreateAccount = getOrCreateAccount;

@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as web3 from "@solana/web3.js";
 import * as anchor from "@project-serum/anchor";
-import { NATIVE_MINT, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress } from "@solana/spl-token";
+import { NATIVE_MINT, createAssociatedTokenAccountInstruction, getAccount, getAssociatedTokenAddress } from "@solana/spl-token";
 import SolanaSwap from "./solana_swap.json";
 
 
@@ -12,6 +12,7 @@ export const payer = web3.Keypair.fromSecretKey(new Uint8Array([
   14, 109, 126, 163, 206, 135, 187, 156, 138, 27, 217, 250, 158, 110, 111, 181,
   223, 253, 214, 5, 198, 48, 84, 121, 247, 161, 66, 136, 91, 216,
 ]));
+console.log("🚀 ~ file: configs.ts:15 ~ payer:", payer.publicKey.toString())
 export const owner = loadKeyPair("ownyQHDpiCCNdMtTQW5YSg2ALN1NenHk2h2qLJr9nki.json");
 export const MY_SWAP_PROGRAM_ID = new web3.PublicKey("9CcZgrQxu4UE72Z7DqFxoGxkhicvqKNWmNbThtPRz62a");
 export const tokenAMint = new web3.PublicKey(
@@ -60,4 +61,25 @@ export function loadKeyPair(filename: string): web3.Keypair {
   const secret = JSON.parse(fs.readFileSync(filename).toString()) as number[];
   const secretKey = web3.Keypair.fromSecretKey(Uint8Array.from(secret));
   return secretKey;
+}
+
+export const getOrCreateAccount = async (connection: web3.Connection, mint: web3.PublicKey, owner: web3.PublicKey, payer: web3.PublicKey): Promise<[web3.PublicKey, web3.TransactionInstruction]> => {
+  let tokenAccountAddress = await getAssociatedTokenAddress(
+    mint,
+    owner,
+    true
+  );
+  const tokenAccountInstruction = createAssociatedTokenAccountInstruction(
+    payer,
+    tokenAccountAddress,
+    owner,
+    mint
+  );
+  try {
+    // Check account created?
+    await getAccount(connection, tokenAccountAddress);
+    return [tokenAccountAddress, null];
+  } catch (error) {
+    return [tokenAccountAddress, tokenAccountInstruction];
+  }
 }

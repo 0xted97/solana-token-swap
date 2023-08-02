@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as web3 from "@solana/web3.js";
 import * as anchor from "@project-serum/anchor";
-import { mintTo, TOKEN_PROGRAM_ID, approve, createCloseAccountInstruction } from "@solana/spl-token";
+import { mintTo, TOKEN_PROGRAM_ID, approve, createCloseAccountInstruction, createMintToInstruction, createApproveInstruction } from "@solana/spl-token";
 
 import {
   loadKeyPair, getTokenAccountCreateInstruction,
@@ -9,7 +9,7 @@ import {
   tokenAMint, tokenBMint, poolMint, MY_SWAP_PROGRAM_ID,
   feeOwner,
   amm,
-  owner, payer, user, userTransferAuthority,
+  owner, payer, user, userTransferAuthority, getOrCreateAccount,
 } from "./configs";
 
 
@@ -41,38 +41,36 @@ async function main() {
     payer.publicKey
   ); // Pool B
 
-  const [tokenAUserAccountAddress, taci] = await getTokenAccountCreateInstruction(
+  const preTransaction = new web3.Transaction();
+
+
+  const [tokenAUserAccountAddress, taci] = await getOrCreateAccount(
+    connection,
     tokenAMint,
     user.publicKey,
     payer.publicKey
   );
-  const [tokenBUserAccountAddress, tbci] = await getTokenAccountCreateInstruction(
+  if (taci) preTransaction.add(taci);
+  const [tokenBUserAccountAddress, tbci] = await getOrCreateAccount(
+    connection,
     tokenBMint,
     user.publicKey,
     payer.publicKey
   );
-
-  try {
-    // Create WSOL Account for User if user Close Account
-    const createWSOLTx = new web3.Transaction();
-    createWSOLTx.add(tbci);
-
-    const createAccountWSOL = await connection.sendTransaction(createWSOLTx, [payer], { preflightCommitment: "finalized" });
-    console.log("🚀 ~ Create Account Hash:", createAccountWSOL);
-  } catch (error) {
-    console.log("🚀 ~ Create Account", error.message);
-  }
+  if (tbci) preTransaction.add(tbci);
 
 
-  await mintTo(connection, payer, tokenAMint, tokenAUserAccountAddress, payer, SWAP_AMOUNT_IN);
+  const mintToInstruction = createMintToInstruction(tokenAMint, tokenAUserAccountAddress, payer.publicKey, SWAP_AMOUNT_IN);
+  preTransaction.add(mintToInstruction);
 
-  await approve(
-    connection, payer,
+  const approveIx = createApproveInstruction(
     tokenAUserAccountAddress,
-    userTransferAuthority.publicKey,
-    user,
-    SWAP_AMOUNT_IN
+    userTransferAuthority.publicKey, // delegate
+    user.publicKey,
+    SWAP_AMOUNT_IN,
   );
+  preTransaction.add(approveIx);
+
 
   const tx = await program.methods.swap(
     new anchor.BN(SWAP_AMOUNT_IN),
@@ -90,21 +88,16 @@ async function main() {
     tokenProgram: TOKEN_PROGRAM_ID,
     hostFeeAccount: web3.PublicKey.default,
   })
-    .signers([userTransferAuthority])
+    .signers([userTransferAuthority, user])
+    .preInstructions(preTransaction.instructions)
+    .postInstructions([
+      createCloseAccountInstruction(
+        tokenBUserAccountAddress,
+        user.publicKey,
+        user.publicKey,
+      )
+    ])
     .rpc();
   console.log("🚀 ~ Swap Hash:", tx)
-
-  // Unwrap SOL for user
-  let closeAccountWSOl = new web3.Transaction();
-  closeAccountWSOl.add(
-    createCloseAccountInstruction(
-      tokenBUserAccountAddress,
-      user.publicKey,
-      user.publicKey,
-    )
-  );
-  closeAccountWSOl.feePayer = payer.publicKey;
-
-  console.log(`Close Hash: ${await connection.sendTransaction(closeAccountWSOl, [payer, user], { preflightCommitment: "finalized" })}`);
 }
 main();

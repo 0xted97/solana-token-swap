@@ -38,6 +38,7 @@ const spl_token_1 = require("@solana/spl-token");
 const configs_1 = require("./configs");
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
+        const defaultSlippage = 0.5;
         const POOL_TOKEN_AMOUNT = 100000;
         // ### Get Swap Pool Authority
         const [swapAuthority] = web3.PublicKey.findProgramAddressSync([configs_1.amm.publicKey.toBuffer()], configs_1.MY_SWAP_PROGRAM_ID);
@@ -73,9 +74,9 @@ function main() {
             toPubkey: tokenBUserAccountAddress,
             lamports: tokenBAmount,
         }), (0, spl_token_1.createSyncNativeInstruction)(tokenBUserAccountAddress)), [configs_1.payer], { preflightCommitment: "finalized" });
-        yield (0, spl_token_1.approve)(configs_1.connection, configs_1.payer, tokenBUserAccountAddress, configs_1.userTransferAuthority.publicKey, configs_1.user, tokenBAmount * 1e6);
+        yield (0, spl_token_1.approve)(configs_1.connection, configs_1.payer, tokenBUserAccountAddress, configs_1.userTransferAuthority.publicKey, configs_1.user, tokenBAmount);
         // Deposit
-        const tx = yield configs_1.program.methods.depositAllTokenTypes(new anchor.BN(POOL_TOKEN_AMOUNT), new anchor.BN(tokenAAmount), new anchor.BN(tokenBAmount * 1e6)).accounts({
+        const tx = yield configs_1.program.methods.depositAllTokenTypes(new anchor.BN(POOL_TOKEN_AMOUNT), new anchor.BN(tokenAAmount), new anchor.BN(tokenBAmount + 1e6)).accounts({
             amm: configs_1.amm.publicKey,
             swapAuthority: swapAuthority,
             userTransferAuthorityInfo: configs_1.userTransferAuthority.publicKey,
